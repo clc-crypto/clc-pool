@@ -141,6 +141,7 @@ async function splitOffAndMergeReward(id: number, targetId: number, poolSecret: 
     // Get ledger length
     const target = (await (await fetch(server + "/coin/" + targetId)).json()).coin;
     const mergeCoinMsg = targetId + " " + target.transactions.length + " " + cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val));
+    console.log("Mrg msg " + mergeCoinMsg);
     const mergeCoinSign = key.sign(sha256(mergeCoinMsg)).toDER('hex');
     const mergeCoinUrl = server + `/merge?origin=${id}&target=${targetId}&vol=${cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${mergeCoinSign}`;
     const mergeRes = await (await fetch(mergeCoinUrl)).json();
