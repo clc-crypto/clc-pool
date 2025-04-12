@@ -3,7 +3,9 @@ import cors from "cors";
 import { ec } from "elliptic";
 import crypto from "crypto";
 import fs from "fs";
+import https from "https";
 
+const useHttps = true;
 
 function cutTo13Decimals(num: number) {
     const str = num.toString();
@@ -216,6 +218,16 @@ app.get("/challenge-solved", async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+if (useHttps) {
+    const privateKey = fs.readFileSync('/etc/letsencrypt/live/clc.ix.tc/privkey.pem', 'utf8');
+    const certificate = fs.readFileSync('/etc/letsencrypt/live/clc.ix.tc/fullchain.pem', 'utf8');
+    const credentials = { key: privateKey, cert: certificate };
+
+    https.createServer(credentials, app).listen(port, () => {
+        console.log(`HTTPS server running at https://localhost:${port}`);
+    });
+} else {
+    app.listen(port, () => {
+        console.log(`HTTP server running at http://localhost:${port}`);
+    });
+}
