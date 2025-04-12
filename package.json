@@ -1,0 +1,23 @@
+{
+  "name": "clc-pool",
+  "version": "1.0.0",
+  "description": "A pool for the CLC cryptocurrency",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/elliptic": "^6.4.18",
+    "@types/node-fetch": "^2.6.12",
+    "cors": "^2.8.5",
+    "elliptic": "^6.6.1",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1"
+  }
+}

@@ -1,0 +1,5 @@
+/dist/
+/node_modulses/
+mined.json
+rewards.json
+package-lock.json
