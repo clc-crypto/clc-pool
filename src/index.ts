@@ -11,7 +11,7 @@ function cutNumber(num: number) {
     const str = num.toString();
     const index = str.indexOf('.');
     if (index === -1) return 0; // no decimal, return as is
-    return parseFloat(str.slice(index, index + 8));
+    return parseFloat(str.slice(0, index + 8));
 }
 
 function sha256(input: string) {
