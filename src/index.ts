@@ -7,11 +7,11 @@ import https from "https";
 
 const useHttps = true;
 
-function cutTo13Decimals(num: number) {
+function cutNumber(num: number) {
     const str = num.toString();
     const index = str.indexOf('.');
-    if (index === -1) return str; // no decimal, return as is
-    return str.slice(0, index + 14); // 1 for '.' + 13 digits
+    if (index === -1) return 0; // no decimal, return as is
+    return parseFloat(str.slice(index, index + 8));
 }
 
 function sha256(input: string) {
@@ -124,10 +124,10 @@ async function splitOffReward(id: number, poolSecret: string) {
 
     // Get ledger length
     const splitId = (await (await fetch(server + "/ledger-length")).json()).length + 1;
-    const splitMsg = splitId + " 1 " + cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val));
+    const splitMsg = splitId + " 1 " + cutNumber(Math.min(rewards[id][poolSecret], minedCoin.val));
     console.log("Amnt: " + minedCoin.val);
     const splitSign = key.sign(sha256(splitMsg)).toDER('hex');
-    const splitUrl = server + `/split?origin=${id}&target=${splitId}&vol=${cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${splitSign}`;
+    const splitUrl = server + `/split?origin=${id}&target=${splitId}&vol=${cutNumber(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${splitSign}`;
     const splitRes = await (await fetch(splitUrl)).json();
     if (splitRes.message !== "success") throw new Error("Error splitting coin #" + id + ", " + splitRes.error);
 
@@ -140,10 +140,10 @@ async function splitOffAndMergeReward(id: number, targetId: number, poolSecret: 
 
     // Get ledger length
     const target = (await (await fetch(server + "/coin/" + targetId)).json()).coin;
-    const mergeCoinMsg = targetId + " " + target.transactions.length + " " + cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val));
+    const mergeCoinMsg = targetId + " " + target.transactions.length + " " + cutNumber(Math.min(rewards[id][poolSecret], minedCoin.val));
     console.log("Mrg msg " + mergeCoinMsg);
     const mergeCoinSign = key.sign(sha256(mergeCoinMsg)).toDER('hex');
-    const mergeCoinUrl = server + `/merge?origin=${id}&target=${targetId}&vol=${cutTo13Decimals(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${mergeCoinSign}`;
+    const mergeCoinUrl = server + `/merge?origin=${id}&target=${targetId}&vol=${cutNumber(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${mergeCoinSign}`;
     const mergeRes = await (await fetch(mergeCoinUrl)).json();
 
     if (mergeRes.message !== "success") throw new Error("Error merging coin " + JSON.stringify(mergeRes));
