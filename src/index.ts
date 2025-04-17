@@ -53,41 +53,46 @@ function save() {
 }
 
 async function splitRewards(holder: string, miningSignature: string, minedHash: string, coinPrivate: string) {
-    const key = ecdsa.keyFromPrivate(coinPrivate, "hex");
+    try {
+        const key = ecdsa.keyFromPrivate(coinPrivate, "hex");
 
-    // submit coin to proxy
-    const subRes = await (await fetch(server + "/challenge-solved?holder=" + holder + "&sign=" + miningSignature + "&hash=" + minedHash)).json();
-    const id = subRes.id as number;
-    if (id === null || id === undefined) throw new Error("Server did not properly respond to challenge-solved: " + JSON.stringify(subRes));
-
-    const coin = (await (await fetch(server + "/coin/" + id)).json()).coin;
-    console.log(`Pool just mined coin, worth: ${coin.val}CLC`);
-
-    // Pay dev fees + take pool fee
-    const devCoin = (await (await fetch(server + "/coin/" + feeCoinId)).json()).coin;
-    const devFeeMsg = feeCoinId + " " + devCoin.transactions.length + " " + (coin.val * (0.021 + fee));
-    const devFeeSign = key.sign(sha256(devFeeMsg)).toDER('hex');
-    const devFeesUrl = server + `/merge?origin=${id}&target=${feeCoinId}&vol=${coin.val * (0.021 + fee)}&sign=${devFeeSign}`;
-    const feeRes = await (await fetch(devFeesUrl)).json();
-    if (feeRes.message !== "success") throw new Error("Error paying dev fees " + JSON.stringify(feeRes));
-
-    // Calculate rewards based on contributions
-    const coinAfterFees = (await (await fetch(server + "/coin/" + id)).json()).coin;
-    rewards[id] = {};
-    let contributionsCount = 0;
-    for (const contributor in contributors) {
-        contributionsCount += contributors[contributor];
+        // submit coin to proxy
+        const subRes = await (await fetch(server + "/challenge-solved?holder=" + holder + "&sign=" + miningSignature + "&hash=" + minedHash)).json();
+        const id = subRes.id as number;
+        if (id === null || id === undefined) throw new Error("Server did not properly respond to challenge-solved: " + JSON.stringify(subRes));
+    
+        const coin = (await (await fetch(server + "/coin/" + id)).json()).coin;
+        console.log(`Pool just mined coin, worth: ${coin.val}CLC`);
+    
+        // Pay dev fees + take pool fee
+        const devCoin = (await (await fetch(server + "/coin/" + feeCoinId)).json()).coin;
+        const devFeeMsg = feeCoinId + " " + devCoin.transactions.length + " " + (coin.val * (0.021 + fee));
+        const devFeeSign = key.sign(sha256(devFeeMsg)).toDER('hex');
+        const devFeesUrl = server + `/merge?origin=${id}&target=${feeCoinId}&vol=${coin.val * (0.021 + fee)}&sign=${devFeeSign}`;
+        const feeRes = await (await fetch(devFeesUrl)).json();
+        if (feeRes.message !== "success") throw new Error("Error paying dev fees " + JSON.stringify(feeRes));
+    
+        // Calculate rewards based on contributions
+        const coinAfterFees = (await (await fetch(server + "/coin/" + id)).json()).coin;
+        rewards[id] = {};
+        let contributionsCount = 0;
+        for (const contributor in contributors) {
+            contributionsCount += contributors[contributor];
+        }
+    
+        console.log(contributionsCount + " miners contributed")
+        const shareInCLC = coinAfterFees.val / contributionsCount;
+        console.log("Contributions: " + JSON.stringify(contributors));
+        for (const contributor in contributors) {
+            rewards[id][contributor] = contributors[contributor] * shareInCLC;
+        }
+    
+        mined[id] = coinPrivate;
+        save();
+    } catch (e: any) {
+        console.log(e.message);
+        throw e;
     }
-
-    console.log(contributionsCount + " miners contributed")
-    const shareInCLC = coinAfterFees.val / contributionsCount;
-    console.log("Contributions: " + JSON.stringify(contributors));
-    for (const contributor in contributors) {
-        rewards[id][contributor] = contributors[contributor] * shareInCLC;
-    }
-
-    mined[id] = coinPrivate;
-    save();
 }
 
 app.get("/payouts/:poolsecret", async (req, res) => {
@@ -193,7 +198,7 @@ app.get("/challenge-solved", async (req, res) => {
         const coinPrivate = req.query.key as string;
         
         const netJob = await (await fetch(server + "/get-challenge")).json();
-
+        console.log(holder);
         const key = ecdsa.keyFromPublic(holder, 'hex');
         if (ecdsa.keyFromPrivate(coinPrivate, "hex").getPublic().encode("hex", false) !== req.query.holder) throw new Error("Invlaid secret key");
         if (!key.verify(sha256(holder), miningSignature) && miningSignature !== "split") throw new Error("Invalid mining signature.");
