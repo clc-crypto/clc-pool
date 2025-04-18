@@ -22,6 +22,7 @@ const ecdsa = new ec('secp256k1');
 
 const app = express();
 const port = 6066;
+const challengeRefresh = 2000;
 const server = "https://clc.ix.tc";
 const poolDiff = "000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 const fee = 0.02;
@@ -29,12 +30,21 @@ const feeCoinId = 0;
 
 app.use(cors()); // Cors all origins
 
+let challenge = {};
+
+async function updateChallenge() {
+    const resp = await fetch(server + "/get-challenge");
+    const netJob = await resp.json();
+    netJob.diff = poolDiff;
+    challenge = netJob;
+}
+
+setInterval(async () => await updateChallenge(), challengeRefresh);
+updateChallenge();
+
 app.get("/get-challenge", async (_, res) => {
     try {
-        const resp = await fetch(server + "/get-challenge");
-        const netJob = await resp.json();
-        netJob.diff = poolDiff;
-        res.json(netJob);
+        res.json(challenge);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
