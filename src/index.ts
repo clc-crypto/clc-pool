@@ -21,7 +21,7 @@ function sha256(input: string) {
 const ecdsa = new ec('secp256k1');
 
 const app = express();
-const port = 6066;
+const port = 443;
 const challengeRefresh = 2000;
 const server = "https://clc.ix.tc";
 const poolDiff = "000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
@@ -235,8 +235,8 @@ app.get("/challenge-solved", async (req, res) => {
 });
 
 if (useHttps) {
-    const privateKey = fs.readFileSync('/etc/letsencrypt/live/clc.ix.tc/privkey.pem', 'utf8');
-    const certificate = fs.readFileSync('/etc/letsencrypt/live/clc.ix.tc/fullchain.pem', 'utf8');
+    const privateKey = fs.readFileSync('/etc/letsencrypt/live/pool.clc.ix.tc/privkey.pem', 'utf8');
+    const certificate = fs.readFileSync('/etc/letsencrypt/live/pool.clc.ix.tc/fullchain.pem', 'utf8');
     const credentials = { key: privateKey, cert: certificate };
 
     https.createServer(credentials, app).listen(port, () => {
