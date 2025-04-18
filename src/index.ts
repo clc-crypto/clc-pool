@@ -33,10 +33,14 @@ app.use(cors()); // Cors all origins
 let challenge = {};
 
 async function updateChallenge() {
+    try {
     const resp = await fetch(server + "/get-challenge");
     const netJob = await resp.json();
     netJob.diff = poolDiff;
     challenge = netJob;
+    } catch (e: any) {
+        console.log("Failed to fetch job, " + e.message);
+    }
 }
 
 setInterval(async () => await updateChallenge(), challengeRefresh);
