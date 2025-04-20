@@ -59,11 +59,17 @@ let rewards: Record<number, Record<string, number>> = {};
 if (fs.existsSync("./rewards.json")) rewards = JSON.parse(fs.readFileSync("./rewards.json", "utf-8"));
 let mined: Record<number, string> = {};
 if (fs.existsSync("./mined.json")) mined = JSON.parse(fs.readFileSync("./mined.json", "utf-8"));
+let payoutIds: Record<string, number> = {};
+if (fs.existsSync("./payoutIds.json")) payoutIds = JSON.parse(fs.readFileSync("./payoutIds.json", "utf-8"));
+let payoutSecrets: Record<string, string> = {};
+if (fs.existsSync("./payoutSecrets.json")) payoutSecrets = JSON.parse(fs.readFileSync("./payoutSecrets.json", "utf-8"));
 let usedHashes: string[] = [];
 
 function save() {
     fs.writeFileSync("./rewards.json", JSON.stringify(rewards, null, 4));
     fs.writeFileSync("./mined.json", JSON.stringify(mined, null, 4));
+    fs.writeFileSync("./payoutIds.json", JSON.stringify(payoutIds, null, 4));
+    fs.writeFileSync("./payoutSecrets.json", JSON.stringify(payoutSecrets, null, 4));
 }
 
 async function splitRewards(holder: string, miningSignature: string, minedHash: string, coinPrivate: string) {
@@ -111,13 +117,7 @@ async function splitRewards(holder: string, miningSignature: string, minedHash: 
 
 app.get("/payouts/:poolsecret", async (req, res) => {
     try {
-        const poolSecret = req.params.poolsecret;
-
-        const result: number[] = [];
-        for (const cid in rewards) {
-            if (rewards[cid][poolSecret]) result.push(Number(cid));
-        }
-        res.json(result);
+        
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -171,9 +171,7 @@ async function splitOffAndMergeReward(id: number, targetId: number, poolSecret: 
 app.get("/payout/:poolsecret", async (req, res) => {
     try {
         const poolSecret = req.params.poolsecret as string;
-        const addr = req.query.addr as string;
-
-        if (!addr) throw new Error("addr query param not provided");
+        if (payoutIds[poolSecret]) throw new Error("Already in the paying out process.");
 
         let rewardId: number = -1;
         let key: null | ec.KeyPair = null;
@@ -191,13 +189,34 @@ app.get("/payout/:poolsecret", async (req, res) => {
 
         if (rewardId === -1 || key === null) throw new Error("Already paid out your rewards, or you have not yet mined any.");
 
+        payoutIds[poolSecret] = rewardId;
+        payoutSecrets[poolSecret] = key.getPrivate().toString("hex");
+        save();
+
+        res.json({ id: rewardId });
+    } catch(e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get("/finish/:poolsecret", async (req, res) => {
+    try {
+        const poolSecret = req.params.poolsecret as string;
+        const addr = req.query.addr as string;
+        if (!payoutIds[poolSecret]) throw new Error("Not in the paying out process.");
+        if (!addr) throw new Error("Required query param addr not provided.");
+
+        const rewardId = payoutIds[poolSecret];
+        const key = ecdsa.keyFromPrivate(payoutSecrets[poolSecret]);
+
         const transSign = key.sign(sha256(addr)).toDER("hex");
         const transUrl = server + `/transaction?cid=${rewardId}&sign=${transSign}&newholder=${addr}`;
         const transRes = await (await fetch(transUrl)).json();
         if (transRes.message !== "success") throw new Error("Error transacting coin #" + rewardId + ", " + transRes.error);
+        delete payoutIds[poolSecret];
+        delete payoutSecrets[poolSecret];
         save();
-        
-        res.json({ id: rewardId });
+        res.json({ message: "success" });
     } catch(e: any) {
         res.status(500).json({ error: e.message });
     }
