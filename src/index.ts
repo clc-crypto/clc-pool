@@ -148,9 +148,9 @@ async function splitOffReward(id: number, poolSecret: string) {
     const splitSign = key.sign(sha256(splitMsg)).toDER('hex');
     const splitUrl = server + `/split?origin=${id}&target=${splitId}&vol=${cutNumber(Math.min(rewards[id][poolSecret], minedCoin.val))}&sign=${splitSign}`;
     const splitRes = await (await fetch(splitUrl)).json();
-    if (splitRes.message !== "success") throw new Error("Error splitting coin #" + id + ", " + splitRes.error);
+    if (splitRes.error) throw new Error("Error splitting coin #" + id + ", " + splitRes.error);
 
-    return splitId;
+    return splitRes.id;
 }
 
 async function splitOffAndMergeReward(id: number, targetId: number, poolSecret: string) {
